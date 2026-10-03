@@ -1,10 +1,7 @@
-import { SliderComponent } from "../../components"
+import { SliderComponent } from "../../components";
 
 const SliderPage = () => {
-    return(
-        
-            <SliderComponent/>
-    )
-}
+  return <SliderComponent />;
+};
 
-export default SliderPage
+export default SliderPage;
