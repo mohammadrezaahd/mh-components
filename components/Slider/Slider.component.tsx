@@ -1,73 +1,87 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from "react";
+import { useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
 import { IoIosArrowDropleft, IoIosArrowDropright } from "react-icons/io";
 
+const INITIAL_CONFIG = {
+  viewNumber: 4,
+  slidesToMove: 3,
+  gap: 20,
+  slideWidth: 0,
+  stepDistance: 0,
+};
+
+const SLIDES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
 export const SliderComponent = () => {
-  const [navigation, setNavigation] = useState<number>(0);
-  const [viewNumber, setViewNumber] = useState<number>(4);
-  const [slideToNavigate, setSlideToNavigate] = useState<number>(3);
-  const [sliderConfigs, setSliderConfigs] = useState({
-    distance: 0,
-    slideWidth: 0,
-  });
+  const [translateX, setTranslateX] = useState(0);
+  const [sliderConfig, setSliderConfig] = useState(INITIAL_CONFIG);
+
   const trackRef = useRef<HTMLDivElement>(null);
 
-  const slides = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const { viewNumber, slidesToMove, gap, slideWidth, stepDistance } =
+    sliderConfig;
 
-  const firstSlide = navigation === 0; //initial value of navigation
-  const lastSlide = navigation / sliderConfigs.slideWidth === slides.length;
+  const maxDistance =
+    Math.max(0, SLIDES.length - viewNumber) * (slideWidth + gap);
 
-  useEffect(() => {
-    console.log("FIRST SLIDE", firstSlide);
-    console.log("LAST SLIDE", lastSlide);
-    console.log(navigation / sliderConfigs.slideWidth);
-  }, [firstSlide, lastSlide]);
+  const isFirstSlide = translateX === 0;
+  const isLastSlide = -translateX >= maxDistance;
 
   useLayoutEffect(() => {
-    const trackElement = trackRef?.current;
+    const trackElement = trackRef.current;
     if (!trackElement) return;
 
     const styles = window.getComputedStyle(trackElement);
-    const gap = parseFloat(styles.columnGap);
 
-    const slides = trackElement.children;
-    const slideWidth = slides[0].getBoundingClientRect().width;
+    const currentGap = parseFloat(styles.columnGap) || 0;
+    const currentWidth = parseFloat(styles.width) || 0;
 
-    const distance = slideToNavigate * (slideWidth + gap);
+    const currentSlideWidth =
+      (currentWidth - (viewNumber - 1) * currentGap) / viewNumber;
 
-    setSliderConfigs({ distance, slideWidth });
-  }, [slideToNavigate]);
+    const currentStepDistance = slidesToMove * (currentSlideWidth + currentGap);
 
-  const navigateSlider = (dir: "next" | "prev") => {
-    const { distance } = sliderConfigs;
+    setSliderConfig((prev) => ({
+      ...prev,
+      gap: currentGap,
+      slideWidth: currentSlideWidth,
+      stepDistance: currentStepDistance,
+    }));
 
-    switch (dir) {
-      case "next": {
-        setNavigation((prev) => prev + distance);
-        break;
-      }
+    setTranslateX(0);
+  }, [viewNumber, slidesToMove]);
 
-      case "prev": {
-        setNavigation((prev) => prev - distance);
-        break;
-      }
+  const navigateSlider = (direction: "next" | "prev") => {
+    setTranslateX((currentPosition) => {
+      const nextPosition =
+        direction === "next"
+          ? currentPosition - stepDistance
+          : currentPosition + stepDistance;
 
-      default:
-        return;
-    }
+      return Math.max(-maxDistance, Math.min(0, nextPosition));
+    });
   };
 
-  const changeSlidesToNavigate = (e: ChangeEvent<HTMLInputElement>) => {
-    const val = e.target?.value;
+  const handleSlidesToMoveChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = Number(event.target.value);
 
-    if (!val || Number(val) <= 0) return;
+    if (!Number.isInteger(value) || value <= 0) return;
 
-    setSlideToNavigate(Number(val));
+    setSliderConfig((prev) => ({
+      ...prev,
+      slidesToMove: value,
+    }));
+  };
+
+  const handleViewNumberChange = (value: number) => {
+    setSliderConfig((prev) => ({
+      ...prev,
+      viewNumber: value,
+    }));
+  };
+
+  const resetSlider = () => {
+    setSliderConfig(INITIAL_CONFIG);
+    setTranslateX(0);
   };
 
   return (
@@ -85,7 +99,7 @@ export const SliderComponent = () => {
         </p>
       </header>
 
-      {/* SLIDES COUNT CONTROL */}
+      {/* SLIDER CONFIG */}
       <section className="w-full max-w-6xl rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl sm:p-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-3">
@@ -94,22 +108,19 @@ export const SliderComponent = () => {
             </span>
 
             <div className="flex flex-wrap gap-2">
-              {[...Array(12)].map(
-                (_, index) =>
-                  (index + 1) % 2 === 0 && (
-                    <button
-                      onClick={() => setViewNumber(index + 1)}
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-semibold transition-colors cursor-pointer ${
-                        viewNumber === index + 1
-                          ? "border-cyan-400 bg-cyan-400 text-slate-950"
-                          : "border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-500 hover:bg-slate-700"
-                      }`}
-                      key={index}
-                    >
-                      {index + 1}
-                    </button>
-                  ),
-              )}
+              {[2, 4, 6, 8, 10, 12].map((count) => (
+                <button
+                  key={count}
+                  onClick={() => handleViewNumberChange(count)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-semibold transition-colors cursor-pointer ${
+                    viewNumber === count
+                      ? "border-cyan-400 bg-cyan-400 text-slate-950"
+                      : "border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-500 hover:bg-slate-700"
+                  }`}
+                >
+                  {count}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -127,8 +138,8 @@ export const SliderComponent = () => {
               id="slide-navigation"
               type="number"
               min={1}
-              value={slideToNavigate}
-              onChange={changeSlidesToNavigate}
+              value={slidesToMove}
+              onChange={handleSlidesToMoveChange}
               className="h-10 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 sm:w-40"
             />
           </div>
@@ -142,21 +153,21 @@ export const SliderComponent = () => {
             <div className="slider_viewport h-72 w-full overflow-hidden rounded-xl sm:h-96">
               <div
                 ref={trackRef}
-                className="slider_track flex h-full w-12/12 items-center justify-start gap-5 bg-slate-900"
+                className="slider_track flex h-full w-full items-center justify-start gap-5 bg-slate-900"
                 style={{
-                  transform: `translateX(${navigation}px)`,
-                  transition: ".4s",
+                  transform: `translateX(${translateX}px)`,
+                  transition: "transform 0.4s ease",
                 }}
               >
-                {slides.map((_, index) => (
+                {SLIDES.map((slide) => (
                   <div
-                    key={index}
+                    key={slide}
                     className="slider_slide flex h-full shrink-0 items-center justify-center rounded-xl border border-white/10 bg-linear-to-br from-blue-500 to-indigo-700 text-3xl font-bold shadow-lg"
                     style={{
-                      width: `${100 / viewNumber}%`,
+                      width: `${slideWidth}px`,
                     }}
                   >
-                    <span className="drop-shadow-md">{index + 1}</span>
+                    <span className="drop-shadow-md">{slide}</span>
                   </div>
                 ))}
               </div>
@@ -165,13 +176,14 @@ export const SliderComponent = () => {
         </div>
       </section>
 
-      {/* NAVIGATION CONTROL */}
+      {/* NAVIGATION */}
       <div className="flex items-center gap-4">
         <button
           type="button"
           aria-label="Previous slides"
+          disabled={isFirstSlide}
           onClick={() => navigateSlider("prev")}
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition hover:border-cyan-400 hover:bg-cyan-400 hover:text-slate-950"
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition hover:border-cyan-400 hover:bg-cyan-400 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-30"
         >
           <IoIosArrowDropleft size={30} />
         </button>
@@ -179,10 +191,19 @@ export const SliderComponent = () => {
         <button
           type="button"
           aria-label="Next slides"
+          disabled={isLastSlide}
           onClick={() => navigateSlider("next")}
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition hover:border-cyan-400 hover:bg-cyan-400 hover:text-slate-950"
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 transition hover:border-cyan-400 hover:bg-cyan-400 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-30"
         >
           <IoIosArrowDropright size={30} />
+        </button>
+
+        <button
+          type="button"
+          onClick={resetSlider}
+          className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-400 hover:text-cyan-400"
+        >
+          Reset
         </button>
       </div>
     </main>

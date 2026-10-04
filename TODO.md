@@ -1,6 +1,8 @@
 <!-- TODO -->
 
-1. Fix last and first slide.
+<!-- 1. Fix last and first slide. ✅  -->
+ <!-- ! Fix flicker -->
+
 2. Slider stop
 3. Slider direction
 4. Infinitie slider
